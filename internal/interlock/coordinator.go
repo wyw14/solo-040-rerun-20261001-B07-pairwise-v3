@@ -41,13 +41,13 @@ func (c *Coordinator) RequestOpen(ctx context.Context, cycle model.TransitCycle,
 	if err := c.policy.ValidateOpen(c.Snapshot(cycle.ChamberID), direction); err != nil {
 		return model.DeviceCommand{}, err
 	}
-	var command model.DeviceCommand
-	_, err := c.arbiter.Reserve(cycle.ChamberID, direction, owner, func() error {
-		issued, issueErr := c.gates.Request(ctx, cycle, direction, true)
-		command = issued
-		return issueErr
+	reservation, err := c.arbiter.Reserve(cycle.ChamberID, direction, owner, func() (model.DeviceCommand, error) {
+		return c.gates.Request(ctx, cycle, direction, true)
 	})
-	return command, err
+	if err != nil {
+		return model.DeviceCommand{}, err
+	}
+	return reservation.Command, nil
 }
 
 func (c *Coordinator) RequestClose(ctx context.Context, cycle model.TransitCycle, direction model.Direction) (model.DeviceCommand, error) {
